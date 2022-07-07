@@ -896,3 +896,16 @@ func ExampleFSM_Transition() {
 	// closed
 	// open
 }
+func BenchmarkFSM(b *testing.B) {
+	fsm := NewFSM(
+		"closed",
+		Events{
+			{Name: "open", Src: []string{"closed"}, Dst: "open"},
+			{Name: "close", Src: []string{"open"}, Dst: "closed"},
+		},
+		Callbacks{},
+	)
+	for i := 0; i < b.N; i++ {
+		fsm.Event("open")
+	}
+}
