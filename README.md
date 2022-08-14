@@ -23,35 +23,38 @@ From examples/simple.go:
 package main
 
 import (
-    "fmt"
-    "github.com/looplab/fsm/v2"
+	"fmt"
+
+	"github.com/looplab/fsm/v2"
 )
 
 func main() {
-    fsm := fsm.New[string, string](
-        "closed",
-        fsm.Events[string, string]{
-            {Name: "open", Src: []string{"closed"}, Dst: "open"},
-            {Name: "close", Src: []string{"open"}, Dst: "closed"},
-        },
-        fsm.Callbacks[string, string]{},
-    )
+	fsm, err := fsm.New(
+		"closed",
+		fsm.Transitions[string, string]{
+			{Event: "open", Src: []string{"closed"}, Dst: "open"},
+			{Event: "close", Src: []string{"open"}, Dst: "closed"},
+		},
+		fsm.Callbacks[string, string]{},
+	)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(fsm.Current())
 
-    fmt.Println(fsm.Current())
+	err = fsm.Event("open")
+	if err != nil {
+		fmt.Println(err)
+	}
 
-    err := fsm.Event("open")
-    if err != nil {
-        fmt.Println(err)
-    }
+	fmt.Println(fsm.Current())
 
-    fmt.Println(fsm.Current())
+	err = fsm.Event("close")
+	if err != nil {
+		fmt.Println(err)
+	}
 
-    err = fsm.Event("close")
-    if err != nil {
-        fmt.Println(err)
-    }
-
-    fmt.Println(fsm.Current())
+	fmt.Println(fsm.Current())
 }
 ```
 
@@ -63,55 +66,56 @@ From examples/struct.go:
 package main
 
 import (
-    "fmt"
-    "github.com/looplab/fsm/v2"
+	"fmt"
+
+	"github.com/looplab/fsm/v2"
 )
 
 type Door struct {
-    To  string
-    FSM *fsm.FSM
+	To  string
+	FSM *fsm.FSM[string, string]
 }
 
 func NewDoor(to string) *Door {
-    d := &Door{
-        To: to,
-    }
+	d := &Door{
+		To: to,
+	}
 
-    d.FSM = fsm.New[string, string](
-        "closed",
-        fsm.Events[string, string]{
-            {Name: "open", Src: []string{"closed"}, Dst: "open"},
-            {Name: "close", Src: []string{"open"}, Dst: "closed"},
-        },
-        fsm.Callbacks[string, string]{
-            fsm.Callback[string, string]{
-                When: fsm.AfterAllStates,
-                F: func(cr *fsm.CallbackContext[MyEvent, MyState]) {
-                    d.enterState(e)
-                },
-            },
-        },
-    )
-
-    return d
+	var err error
+	d.FSM, err = fsm.New(
+		"closed",
+		fsm.Transitions[string, string]{
+			{Event: "open", Src: []string{"closed"}, Dst: "open"},
+			{Event: "close", Src: []string{"open"}, Dst: "closed"},
+		},
+		fsm.Callbacks[string, string]{
+			fsm.Callback[string, string]{When: fsm.EnterAllStates,
+				F: func(e *fsm.CallbackContext[string, string]) { d.enterState(e) },
+			},
+		},
+	)
+	if err != nil {
+		fmt.Println(err)
+	}
+	return d
 }
 
-func (d *Door) enterState(e *fsm.Event) {
-    fmt.Printf("The door to %s is %s\n", d.To, e.Dst)
+func (d *Door) enterState(e *fsm.CallbackContext[string, string]) {
+	fmt.Printf("The door to %s is %s\n", d.To, e.Dst)
 }
 
 func main() {
-    door := NewDoor("heaven")
+	door := NewDoor("heaven")
 
-    err := door.FSM.Event("open")
-    if err != nil {
-        fmt.Println(err)
-    }
+	err := door.FSM.Event("open")
+	if err != nil {
+		fmt.Println(err)
+	}
 
-    err = door.FSM.Event("close")
-    if err != nil {
-        fmt.Println(err)
-    }
+	err = door.FSM.Event("close")
+	if err != nil {
+		fmt.Println(err)
+	}
 }
 ```
 
